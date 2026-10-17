@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>How This Portfolio Is Built — Behind the Scenes</title>
+<meta name="description" content="Visual explainer: stack, project structure, build pipeline, browser runtime, and auto-deploy flow of the Arumuga Gomathi portfolio." />
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f8fafc; --card: #ffffff;
+    --ink: #0f172a; --muted: #475569; --line: #e2e8f0;
+    --accent: #d97706; --accent-soft: #fef3c7; --code-bg: #0f172a; --code-ink: #e2e8f0;
+  }
+  html.dark {
+    --bg: #020617; --bg-soft: #0b1120; --card: #0f172a;
+    --ink: #f1f5f9; --muted: #94a3b8; --line: #1e293b;
+    --accent: #f59e0b; --accent-soft: rgba(245,158,11,.12); --code-bg: #020617; --code-ink: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.65; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px 80px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; position: sticky; top: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); z-index: 10; }
+  .brand { font-weight: 800; font-size: 15px; }
+  .brand span { color: var(--accent); }
+  .toggle { cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 8px 14px; font-size: 14px; font-weight: 600; }
+  .hero { padding: 56px 0 24px; }
+  .kicker { font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.15; letter-spacing: -0.02em; margin: 10px 0 12px; }
+  .lede { color: var(--muted); font-size: 17px; max-width: 640px; }
+  section { margin-top: 40px; }
+  h2 { font-size: 24px; letter-spacing: -0.01em; margin-bottom: 6px; }
+  h2 .n { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--bg); font-size: 15px; margin-right: 10px; vertical-align: 2px; }
+  html.dark h2 .n { background: var(--accent); color: #020617; }
+  .sub { color: var(--muted); margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 14px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 10px; margin-bottom: 8px; }
+  h3 { font-size: 16px; margin-bottom: 6px; }
+  p, li { font-size: 15px; color: var(--muted); }
+  .card p, .card li { color: var(--muted); }
+  .card strong { color: var(--ink); }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  code { font-family: ui-monospace, "JetBrains Mono", monospace; font-size: 13px; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 6px; }
+  pre { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.7; margin-top: 10px; border: 1px solid var(--line); }
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 12px; flex-wrap: wrap; }
+  .step { flex: 1 1 140px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; text-align: center; }
+  .step b { display: block; color: var(--ink); font-size: 13px; margin-bottom: 2px; }
+  .step span { color: var(--muted); font-size: 12px; }
+  .arrow { align-self: center; padding: 0 6px; color: var(--accent); font-weight: 800; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--ink); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  td { color: var(--muted); }
+  td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">AG <span>/ how-it-works</span></div>
+    <button class="toggle" onclick="document.documentElement.classList.toggle('dark')" title="Toggle theme">◐ Theme</button>
+  </header>
+
+  <div class="hero">
+    <div class="kicker">Portfolio internals · no build step · this file is standalone</div>
+    <h1>How this portfolio is built &amp; what happens behind the scenes</h1>
+    <p class="lede">A visual tour of the site at <a href="https://arumuga-gomathi.github.io/my-portfolio/">arumuga-gomathi.github.io/my-portfolio</a> — the stack, the files, the build pipeline, the browser runtime, and the auto-deploy flow.</p>
+  </div>
+
+  <section>
+    <h2><span class="n">1</span>The stack</h2>
+    <p class="sub">A static single-page site. No backend, no database, no server code.</p>
+    <div class="grid2">
+      <div class="card"><span class="pill">UI</span><h3>React 19 + TypeScript</h3><p>Components render resume content from a single data file. TypeScript type-checks everything before bundling.</p></div>
+      <div class="card"><span class="pill">Build</span><h3>Vite 6 + Rollup</h3><p>Dev server with hot-reload; production bundler that tree-shakes and hashes output files.</p></div>
+      <div class="card"><span class="pill">Style</span><h3>Tailwind CSS v4 + shadcn-style UI</h3><p>Utility classes + <code>Button</code>/<code>Badge</code>/<code>Card</code> primitives built on <code>cva</code> + <code>tailwind-merge</code>. Class-based dark mode.</p></div>
+      <div class="card"><span class="pill">Motion &amp; icons</span><h3>Framer Motion + lucide-react</h3><p>Scroll-reveal animations and icons. Largest chunk of the JS bundle — see §4.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>Project structure</h2>
+    <p class="sub">Content is separated from presentation: edit one file to change any text on the site.</p>
+    <div class="card">
+<pre>my-portfolio/
+├── index.html                  # fonts, SEO meta, theme anti-flash script
+├── vite.config.ts              # Vite + Tailwind plugin, '@' alias, base './'
+├── src/
+│   ├── main.tsx                # entry: mounts &lt;App/&gt; into #root
+│   ├── App.tsx                 # ThemeProvider + section order
+│   ├── index.css               # Tailwind import, dark variant, scrollbar
+│   ├── lib/
+│   │   ├── data.ts             # ★ ALL resume content lives here
+│   │   └── utils.ts            # cn() class merger
+│   └── components/
+│       ├── theme.tsx           # light/dark state + localStorage
+│       ├── Navbar.tsx          # sticky nav, mobile menu, theme toggle
+│       ├── Hero.tsx            # headline + Ticketly architecture card
+│       ├── AboutSkills.tsx     # summary + 6 skill groups
+│       ├── Experience.tsx      # timeline (Psiog / TCS iON / AWS WiT)
+│       ├── ProjectsCerts.tsx   # 4 projects + certs + education
+│       ├── ContactFooter.tsx   # contact cards + mailto form
+│       ├── section.tsx         # SectionHeading + Reveal animation
+│       └── ui/                 # button.tsx, badge.tsx, card.tsx
+├── public/                     # copied as-is → resume .docx, favicon
+└── .github/workflows/deploy.yml# build + deploy on push to main</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>Dev vs build pipeline</h2>
+    <p class="sub">Two npm scripts, two very different code paths.</p>
+    <div class="grid2">
+      <div class="card"><span class="pill">npm run dev</span><h3>Development server</h3><p>Vite serves <code>index.html</code> + <code>src/main.tsx</code> as native ES modules — no bundling. Edits hot-swap in the browser in milliseconds.</p></div>
+      <div class="card"><span class="pill">npm run build</span><h3>Production build → <code>dist/</code></h3><p>Stage 1: <code>tsc -b</code> type-checks; any error fails the build. Stage 2: Rollup bundles <strong>2,091 modules</strong> into hashed files. <code>base: './'</code> keeps paths relative so the same output works on Pages, custom domains, or S3+CloudFront.</p></div>
+    </div>
+    <div class="card">
+      <h3>Real output of this site's build</h3>
+<pre>dist/index.html                  1.70 kB │ gzip:  0.82 kB
+dist/assets/index-*.css         29.95 kB │ gzip:  6.13 kB
+dist/assets/index-*.js         421.29 kB │ gzip: 132.77 kB
+✓ built in ~8s</pre>
+      <p style="margin-top:8px">Hashed filenames (e.g. <code>index-BnJH4tds.js</code>) change only when content changes, so browsers cache aggressively and always fetch fresh code after a deploy.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>Browser runtime</h2>
+    <p class="sub">What happens between typing the URL and seeing the page.</p>
+    <div class="card"><div class="flow">
+      <div class="step"><b>1 · HTML</b><span>index.html loads; inline script restores theme from localStorage before first paint — no dark-mode flash</span></div><div class="arrow">→</div>
+      <div class="step"><b>2 · Bundle</b><span>single hashed JS + CSS download; React hydrates into #root</span></div><div class="arrow">→</div>
+      <div class="step"><b>3 · Reveal</b><span>IntersectionObserver (Framer Motion whileInView) animates each section in once on scroll</span></div><div class="arrow">→</div>
+      <div class="step"><b>4 · Interact</b><span>sticky nav blur on scroll, theme toggle persists, contact form composes a mailto: — no server involved</span></div>
+    </div></div>
+    <div class="card"><h3>Where the 421&nbsp;KB goes</h3><p>React + ReactDOM and Framer Motion dominate the bundle; the site's own code is a small fraction. If load time ever matters, the levers are: lazy-load Framer Motion, drop it for CSS-only reveals, or code-split per section.</p></div>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>Auto-deploy flow</h2>
+    <p class="sub">Every push to <code>main</code> ships the site with zero manual steps.</p>
+    <div class="card"><div class="flow">
+      <div class="step"><b>git push</b><span>to main on GitHub</span></div><div class="arrow">→</div>
+      <div class="step"><b>Workflow</b><span>Ubuntu runner: npm ci → npm run build</span></div><div class="arrow">→</div>
+      <div class="step"><b>Artifact</b><span>dist/ uploaded via upload-pages-artifact</span></div><div class="arrow">→</div>
+      <div class="step"><b>Live</b><span>deploy-pages publishes to the Pages URL</span></div>
+    </div></div>
+    <div class="card">
+      <h3>One-time setup that was needed</h3>
+      <ul>
+        <li>Pages <strong>Source → GitHub Actions</strong> enabled via API (<code>build_type: workflow</code>).</li>
+        <li>First run failed because Pages wasn't enabled yet — re-running the failed jobs went green.</li>
+        <li>Commits use the <code>users.noreply.github.com</code> email to satisfy the account's private-email push protection (GH007).</li>
+        <li>Portable <code>gh</code> CLI lives in <code>%LOCALAPPDATA%\Programs\gh</code> and is wired as the git credential helper.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">6</span>Key files cheat-sheet</h2>
+    <div class="card">
+      <table>
+        <tr><th>Want to…</th><th>Edit</th></tr>
+        <tr><td>Change any text, job, skill</td><td><code>src/lib/data.ts</code></td></tr>
+        <tr><td>Change section order/layout</td><td><code>src/App.tsx</code></td></tr>
+        <tr><td>Restyle / theme colors</td><td><code>src/index.css</code> + <code>ui/*.tsx</code></td></tr>
+        <tr><td>Change deploy behavior</td><td><code>.github/workflows/deploy.yml</code></td></tr>
+        <tr><td>Update this explainer</td><td><code>how-it-works.html</code> (this file — standalone)</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>© 2026 Arumuga Gomathi R · how-it-works.html · standalone, no build step</span>
+    <a href="https://arumuga-gomathi.github.io/my-portfolio/">← back to portfolio</a>
+  </footer>
+
+</div>
+<script>
+  try {
+    if (localStorage.getItem('hiw-theme') === 'dark' ||
+        (!localStorage.getItem('hiw-theme') && matchMedia('(prefers-color-scheme: dark)').matches))
+      document.documentElement.classList.add('dark');
+  } catch (e) {}
+  document.querySelector('.toggle').addEventListener('click', () => {
+    try { localStorage.setItem('hiw-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); } catch (e) {}
+  });
+</script>
+</body>
+</html>
